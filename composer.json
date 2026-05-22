@@ -1,0 +1,17 @@
+{
+  "name": "drupal/k7zz_webform_keycloak",
+  "type": "drupal-custom-module",
+  "description": "Webform handlers that create and activate Keycloak user accounts on form submission.",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.1",
+    "drupal/core": "^10 || ^11",
+    "drupal/webform": "*",
+    "drupal/k7zz_keycloak_lib": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Drupal\\k7zz_webform_keycloak\\": "src/"
+    }
+  }
+}

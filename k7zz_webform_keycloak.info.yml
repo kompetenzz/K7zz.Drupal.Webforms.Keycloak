@@ -1,0 +1,8 @@
+name: 'K7zz Webform Keycloak'
+type: module
+description: 'Creates Keycloak user accounts on webform submission.'
+package: Custom
+core_version_requirement: ^10 || ^11
+dependencies:
+  - webform:webform
+  - k7zz_keycloak_lib:k7zz_keycloak_lib  
