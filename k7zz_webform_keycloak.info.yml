@@ -5,4 +5,5 @@ package: Custom
 core_version_requirement: ^10 || ^11
 dependencies:
   - webform:webform
-  - k7zz_keycloak_lib:k7zz_keycloak_lib  
+  - k7zz_keycloak_lib:k7zz_keycloak_lib
+  - k7zz_ldap_lib:k7zz_ldap_lib
