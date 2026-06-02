@@ -6,6 +6,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\k7zz_keycloak_lib\Client;
 use Drupal\k7zz_ldap_lib\Client as LdapClient;
+use Drupal\Core\Url;
 
 /**
  * Keycloak Account Creator Webform handler.
@@ -209,6 +210,24 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
             ),
             '#states'        => $ldapVisible,
         ];
+
+        // Test-Button + Ergebnis-Wrapper
+        $form['ldap_autoincrement']['ldap_test_result'] = [
+            '#type'       => 'container',
+            '#attributes' => ['id' => 'ldap-connection-test-result'],
+        ];
+        $form['ldap_autoincrement']['ldap_test_button'] = [
+            '#type'                    => 'button',
+            '#value'                   => $this->t('Verbindung testen'),
+            '#attributes'              => ['data-ldap-test-btn' => ''],
+            '#limit_validation_errors' => [],
+            '#states'                  => $ldapVisible,
+        ];
+
+        // JS-Library + Test-URL als drupalSetting übergeben
+        $form['#attached']['library'][] = 'k7zz_webform_keycloak/ldap-test';
+        $form['#attached']['drupalSettings']['k7zzLdapTest']['testUrl'] =
+            Url::fromRoute('k7zz_webform_keycloak.ldap_test')->toString();
 
         return $form;
     }

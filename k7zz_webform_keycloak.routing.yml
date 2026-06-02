@@ -1,0 +1,9 @@
+k7zz_webform_keycloak.ldap_test:
+  path: '/admin/k7zz-webform-keycloak/ldap-test'
+  defaults:
+    _controller: '\Drupal\k7zz_webform_keycloak\Controller\LdapTestController::test'
+  requirements:
+    _permission: 'administer webform'
+  methods: [POST]
+  options:
+    no_cache: true

@@ -1,0 +1,8 @@
+ldap-test:
+  version: 1.x
+  js:
+    js/ldap-test.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+    - core/drupalSettings
