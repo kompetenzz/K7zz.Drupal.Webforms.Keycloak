@@ -4,6 +4,7 @@ namespace Drupal\k7zz_webform_keycloak\Plugin\WebformHandler;
 
 use Drupal\webform\Plugin\WebformHandlerBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\webform\WebformSubmissionInterface;
 use Drupal\k7zz_keycloak_lib\Client;
 
 abstract class KeycloakHandlerBase extends WebformHandlerBase
@@ -41,6 +42,7 @@ abstract class KeycloakHandlerBase extends WebformHandlerBase
             'client_secret' => '',
             'identifier_field_type' => 'email',
             'identifier_field' => '',
+            'success_status_field' => '',
         ];
     }
 
@@ -88,6 +90,12 @@ abstract class KeycloakHandlerBase extends WebformHandlerBase
             '#default_value' => $this->configuration['identifier_field'],
             '#required' => TRUE,
         ];
+        $form['keycloak']['success_status_field'] = [
+            '#type' => 'textfield',
+            '#title' => $this->t('Set Success-Status-Field'),
+            '#default_value' => $this->configuration['success_status_field'],
+            '#description' => $this->t('Optional: Machine-Name eines (versteckten) Webform-Feldes, in das dieser Handler sein Ergebnis schreibt.<br><strong>0</strong> = nicht ausgeführt, <strong>1</strong> = Erfolg, <strong>-1</strong> = Fehler/Misserfolg.<br>Damit lassen sich andere Handler per Webform-Conditions von diesem Handler abhängig machen. Leer lassen, um das Feature zu deaktivieren.'),
+        ];
         return $form;
     }
 
@@ -103,5 +111,19 @@ abstract class KeycloakHandlerBase extends WebformHandlerBase
                 $this->configuration[$name] = $values['keycloak'][$name];
             }
         }
+    }
+
+    /**
+     * Writes this handler's outcome into the configured success-status field,
+     * if one is set, so other handlers can be made conditional on it via
+     * Webform Conditions. 0 = not executed, 1 = success, -1 = error/failure.
+     */
+    protected function setSuccessStatus(WebformSubmissionInterface $webform_submission, int $status): void
+    {
+        $field = trim($this->configuration['success_status_field'] ?? '');
+        if ($field === '') {
+            return;
+        }
+        $webform_submission->setElementData($field, $status);
     }
 }

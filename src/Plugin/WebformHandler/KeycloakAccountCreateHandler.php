@@ -51,6 +51,9 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
             'group_separator'      => ',',
             'group_name'           => '',
             'field_map'            => [],
+            // Auto-Username
+            'username_auto'        => FALSE,
+            'username_pattern'     => '{firstname}.{lastname}',
             // LDAP-Autoincrement
             'ldap_enabled'         => FALSE,
             'ldap_host'            => '',
@@ -124,6 +127,33 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
                 '#required'      => in_array($field, $this->required_fields),
             ];
         }
+
+        // ── Auto-Username ─────────────────────────────────────────────────────
+        $form['username_settings'] = [
+            '#type'        => 'fieldset',
+            '#title'       => $this->t('Username (automatisch)'),
+            '#description' => $this->t(
+                'Generiert den Keycloak-Username aus Formularfeldern. '
+                . 'Ist der Wert bereits vergeben, wird automatisch ein Zählsuffix angehängt '
+                . '(<code>max.muster</code> → <code>max.muster.1</code>). '
+                . 'Verfügbare Token: <code>{firstname}</code>, <code>{lastname}</code>, '
+                . '<code>{email}</code>, <code>{title}</code>.'
+            ),
+        ];
+        $form['username_settings']['username_auto'] = [
+            '#type'          => 'checkbox',
+            '#title'         => $this->t('Username automatisch generieren'),
+            '#default_value' => $this->configuration['username_auto'],
+        ];
+        $form['username_settings']['username_pattern'] = [
+            '#type'          => 'textfield',
+            '#title'         => $this->t('Muster'),
+            '#default_value' => $this->configuration['username_pattern'],
+            '#description'   => $this->t('z.B. <code>{firstname}.{lastname}</code>'),
+            '#states'        => [
+                'visible' => [':input[name="username_auto"]' => ['checked' => TRUE]],
+            ],
+        ];
 
         // ── LDAP-Autoincrement ────────────────────────────────────────────────
         $form['ldap_autoincrement'] = [
@@ -241,17 +271,11 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
         parent::submitConfigurationForm($form, $form_state);
         $values = $form_state->getValues();
 
-        // keycloak_account-Werte (inkl. field_map)
-        foreach ($this->configuration as $name => $value) {
-            if (array_key_exists($name, $values['keycloak_account'] ?? [])) {
-                $this->configuration[$name] = $values['keycloak_account'][$name];
-            }
-        }
-
-        // ldap_autoincrement-Werte
-        foreach ($this->configuration as $name => $value) {
-            if (array_key_exists($name, $values['ldap_autoincrement'] ?? [])) {
-                $this->configuration[$name] = $values['ldap_autoincrement'][$name];
+        foreach (['keycloak_account', 'username_settings', 'ldap_autoincrement'] as $section) {
+            foreach ($this->configuration as $name => $value) {
+                if (array_key_exists($name, $values[$section] ?? [])) {
+                    $this->configuration[$name] = $values[$section][$name];
+                }
             }
         }
     }
@@ -267,6 +291,8 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
 
     public function postSave(WebformSubmissionInterface $webform_submission, $update = TRUE): void
     {
+        $this->setSuccessStatus($webform_submission, 0);
+
         if ($webform_submission->isDraft()) {
             \Drupal::logger('k7zz_webform_keycloak')
                 ->notice('Not submitting draft to keycloak for account creation.');
@@ -318,6 +344,24 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
         if ($user_data['lastname'])  $kcUser['lastname']  = $user_data['lastname'];
         if ($user_data['title'])     $kcUser['title']     = $user_data['title'];
         if ($photoUrl !== null)       $kcUser['photo']     = $photoUrl;
+
+        // ── Auto-Username ─────────────────────────────────────────────────────
+        if (!empty($config['username_auto']) && !empty($config['username_pattern'])) {
+            $base = strtr($config['username_pattern'], [
+                '{firstname}' => $user_data['firstname'] ?? '',
+                '{lastname}'  => $user_data['lastname']  ?? '',
+                '{email}'     => $user_data['email']     ?? '',
+                '{title}'     => $user_data['title']     ?? '',
+            ]);
+            $kcUser['username'] = $this->getConnector()->generateUniqueUsername($base);
+            \Drupal::logger('k7zz_webform_keycloak')->notice(
+                'Auto-generated username: @u',
+                ['@u' => $kcUser['username']]
+            );
+        } elseif (!empty($user_data['username'])) {
+            // Explicit username from field mapping.
+            $kcUser['username'] = $user_data['username'];
+        }
 
         // ── LDAP-Autoincrement ────────────────────────────────────────────────
         if (!empty($config['ldap_enabled']) && !empty($config['ldap_attribute'])) {
@@ -372,8 +416,10 @@ class KeycloakAccountCreateHandler extends KeycloakHandlerBase
                     \Drupal::messenger()->addError('❌ Unbekannter Fehler beim Konto-Setup.');
                     break;
             }
+            $this->setSuccessStatus($webform_submission, -1);
             return;
         }
+        $this->setSuccessStatus($webform_submission, 1);
 
         \Drupal::logger('k7zz_webform_keycloak')
             ->notice('User created in Keycloak: @user', ['@user' => $user_data['email']]);

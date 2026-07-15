@@ -28,6 +28,8 @@ class KeycloakAccountActivateHandler extends KeycloakHandlerBase
 
     public function postSave(WebformSubmissionInterface $webform_submission, $update = TRUE): void
     {
+        $this->setSuccessStatus($webform_submission, 0);
+
         if ($webform_submission->isDraft()) {
             \Drupal::logger('kzz_webform_keycloak')
                 ->notice('Not submitting draft to keycloak for user activation.');
@@ -43,11 +45,15 @@ class KeycloakAccountActivateHandler extends KeycloakHandlerBase
                 \Drupal::logger('kzz_webform_keycloak')
                     ->notice('User %user_id activated.', ['%user_id' => $identifier]);
                 \Drupal::messenger()->addStatus('✅ Konto erfolgreich aktiviert.');
+                $this->setSuccessStatus($webform_submission, 1);
             } else {
                 \Drupal::logger('kzz_webform_keycloak')
                     ->error('Failed to activate user %user_id.', ['%user_id' => $identifier]);
                 \Drupal::messenger()->addError('❌ Konto konnte nicht angelegt werden.');
+                $this->setSuccessStatus($webform_submission, -1);
             }
+        } else {
+            $this->setSuccessStatus($webform_submission, -1);
         }
     }
 }
